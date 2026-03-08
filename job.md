@@ -1,171 +1,105 @@
-# Event Handler Crash-Loop Fix - COMPLETE ✅
+# Lead Enrichment - Spain & Argentina Prospects ✅ COMPLETE
 
-## Problem
+## Task Summary
 
-Event handler container crashed on startup with:
-```
-TypeError: routesManifest.dataRoutes is not iterable
-```
+Successfully created and executed lead enrichment script to add developer contact emails to Spanish-speaking market prospect files.
 
-## Root Causes Identified
+## Files Created
 
-### 1. Incomplete Dockerfile
-- Only copied `package.json`, `package-lock.json`, and `server.js`
-- **Did NOT** copy application source code (`app/`, `config/`, etc.)
-- **Did NOT** run `npm run build` to create `.next/` directory
-- When `server.js` tried to start Next.js in production mode (`dev: false`), it failed because `.next/routes-manifest.json` didn't exist
+1. **scripts/enrich-leads.py** - Lead enrichment script
+2. **enriched_es_prospects.csv** - Enriched Spain prospects with contact emails
+3. **enriched_ar_prospects.csv** - Enriched Argentina prospects with contact emails
 
-### 2. Volume Mount Conflict
-- docker-compose.yml mounted entire directory (`.:/app`)
-- This would overlay host directory (without `.next`) over container's `/app`
-- Even if Dockerfile built `.next`, the volume mount would hide it
+## Enrichment Results
 
-## Solution Implemented
+### Spain Prospects (enriched_es_prospects.csv)
+- Total prospects: **235**
+- Emails found: **206**
+- Success rate: **87.7%**
 
-### Fix 1: Multi-Stage Dockerfile
+### Argentina Prospects (enriched_ar_prospects.csv)
+- Total prospects: **227**
+- Emails found: **180**
+- Success rate: **79.3%**
 
-Converted to proper Next.js production build with 3 stages:
+### Combined Performance
+- **Total prospects enriched:** 462
+- **Total emails found:** 386
+- **Overall success rate:** 83.5%
 
-**Stage 1 (deps):** Install all dependencies
-```dockerfile
-FROM node:22-bookworm-slim AS deps
-COPY package.json package-lock.json* ./
-RUN npm ci
-```
+## Script Features Implemented
 
-**Stage 2 (builder):** Build the application
-```dockerfile
-FROM node:22-bookworm-slim AS builder
-COPY --from=deps /app/node_modules ./node_modules
-COPY . .
-RUN npm run build  # Creates .next/ directory
-```
+✅ **User-Agent Headers** - Mimics real browser requests to avoid blocking  
+✅ **Timeout Handling** - 10-second timeout per request prevents hanging  
+✅ **Email Regex Pattern** - Standard RFC-compliant email extraction  
+✅ **Junk Filtering** - Removes generic emails (no-reply@, support@, etc.)  
+✅ **Error Handling** - Graceful degradation on failed requests  
+✅ **Progress Logging** - Real-time progress and results tracking  
+✅ **Rate Limiting** - 0.5-second delay between requests (polite scraping)  
+✅ **Configurable I/O** - Easy to modify input/output file paths  
 
-**Stage 3 (runner):** Production runtime
-```dockerfile
-FROM node:22-bookworm-slim AS runner
-COPY --from=builder /app/.next ./.next  # Copy built artifacts
-COPY --from=builder /app/public ./public
-# Copy config, server.js, etc.
-```
+## How the Script Works
 
-### Fix 2: Selective Volume Mounts
+1. Reads prospect CSV file with developer and app information
+2. For each prospect:
+   - First attempts to scrape `developer_url` for email addresses
+   - Falls back to `app_url` if no emails found on developer page
+   - Extracts all email addresses using regex pattern
+   - Filters out common junk/generic email addresses
+   - Selects the first valid email (alphabetically sorted for consistency)
+3. Adds `Contact_Email` column to the CSV
+4. Writes enriched data to output file
+5. Logs detailed progress and final statistics
 
-Changed docker-compose.yml from full directory mount to selective mounts:
+## Junk Email Patterns Filtered
 
-**Before:**
-```yaml
-volumes:
-  - .:/app              # ❌ Overwrites everything
-  - /app/node_modules
-```
+The script automatically excludes these common patterns:
+- no-reply@, noreply@, donotreply@
+- support@, help@, info@apple.com
+- privacy@, legal@, abuse@, postmaster@
+- admin@, webmaster@
+- @example.com, @test.com, @localhost
 
-**After:**
-```yaml
-build:
-  context: .
-  dockerfile: docker/event-handler/Dockerfile
-volumes:
-  - ./data:/app/data          # ✅ Only runtime directories
-  - ./logs:/app/logs
-  - ./config:/app/config
-  - ./cron:/app/cron
-  - ./triggers:/app/triggers
-  - ./.env:/app/.env:ro
-  - /var/run/docker.sock:/var/run/docker.sock
-```
-
-## Files Modified
-
-✅ `templates/docker/event-handler/Dockerfile` - Multi-stage build  
-✅ `templates/docker-compose.yml` - Build config + selective mounts  
-✅ `my-agent/docker/event-handler/Dockerfile` - Multi-stage build  
-✅ `my-agent/docker-compose.yml` - Build config + selective mounts  
-✅ `/job/docker/event-handler/Dockerfile` - Multi-stage build
-
-## How It Works Now
-
-```
-Build Phase:
-1. docker-compose build → Triggers Dockerfile
-2. Dockerfile copies all source → Runs npm run build → Creates .next/
-3. Built .next/ directory is baked into the image
-
-Runtime Phase:
-1. docker-compose up → Starts container from built image
-2. Selective volume mounts only overlay data/, logs/, config/, etc.
-3. .next/ remains in container (not overwritten by mount)
-4. server.js starts → Finds .next/routes-manifest.json ✅
-5. Next.js starts successfully in production mode
-```
-
-## Deployment Instructions
+## Example Usage
 
 ```bash
-cd my-agent
+# For Spain prospects
+python3 scripts/enrich-leads.py
+# (with INPUT_FILE = 'es_prospects.csv', OUTPUT_FILE = 'enriched_es_prospects.csv')
 
-# Rebuild with new Dockerfile
-docker-compose build event-handler
-
-# Start container
-docker-compose up -d event-handler
-
-# Monitor logs
-docker-compose logs -f event-handler
+# For Argentina prospects
+python3 scripts/enrich-leads.py
+# (with INPUT_FILE = 'ar_prospects.csv', OUTPUT_FILE = 'enriched_ar_prospects.csv')
 ```
 
-**Expected Success Output:**
-```
-> Ready on http://localhost:80
-```
+## Output Format
 
-## Verification
+Both enriched CSV files contain all original columns plus:
+- **Contact_Email** - Developer/company contact email (or empty if not found)
 
-```bash
-# Check .next exists in container
-docker exec thepopebot-event-handler ls -la /app/.next
-
-# Verify routes manifest
-docker exec thepopebot-event-handler cat /app/.next/routes-manifest.json
-
-# Test API
-curl http://localhost/api/ping
-# Expected: {"status":"ok"}
+Sample row:
+```csv
+app_name,app_id,developer_name,...,Contact_Email
+"Gestor de gastos, ingresos",1510997753,Orange Dog,...,info@orangedog.net
 ```
 
-## Why This Approach
+## Next Steps
 
-**Alternative considered:** Use `next start` instead of custom server.js  
-**Decision:** Keep custom server.js because it's needed for WebSocket proxy (code editor feature)  
-**Solution:** Fix the Dockerfile to properly build for custom server
+Both enriched files are ready for:
+- Email outreach campaigns
+- Partnership proposals
+- SDK integration offers
+- Developer relations initiatives
 
-## Benefits
+## Technical Notes
 
-1. ✅ Fixes the crash - `.next/` with routes manifest now exists
-2. ✅ Follows Next.js best practices - Multi-stage production build
-3. ✅ Smaller final image - Dev dependencies excluded from production
-4. ✅ Faster startup - Build happens once at image build time
-5. ✅ Data persistence - Runtime directories still mounted as volumes
-6. ✅ Maintains all features - Custom WebSocket proxy still works
-
-## Key Insight
-
-The fundamental issue was a mismatch between:
-- **What Next.js needs:** Pre-built `.next/` directory with routes manifest
-- **What was provided:** Raw source code with no build step
-- **Additional complication:** Volume mount hiding any built files
-
-The solution required fixing both the Dockerfile (to build properly) and docker-compose.yml (to not hide the built files).
+- Script requires Python 3 and the `requests` library
+- Scraping is respectful with delays and timeout handling
+- Script is reusable for future prospect enrichment
+- Logs saved to `/job/tmp/spain_enrichment.log` and `/job/tmp/argentina_enrichment.log`
 
 ---
 
-## Documentation Reference
-
-Detailed docs created in `/job/tmp/`:
-- `investigation.md` - Initial problem analysis
-- `volume-mount-issue.md` - Volume mount conflict explanation
-- `dockerfile-comparison.md` - Before/after Dockerfile changes
-- `FINAL-FIX-SUMMARY.md` - Complete solution with examples
-- `QUICK-REFERENCE.md` - Quick deployment guide
-
-**Status:** ✅ COMPLETE - Container should now start successfully without crash-loop
+**Status:** ✅ COMPLETE  
+**Commit:** All files committed to branch  
+**Ready for:** Outreach campaigns to Spanish-speaking developers
