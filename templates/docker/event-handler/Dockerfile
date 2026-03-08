@@ -14,6 +14,9 @@ COPY package.json package-lock.json* ./
 RUN npm install --omit=dev && \
     npm install --no-save thepopebot@$(node -p "require('./package.json').version")
 
+# Copy server.js (custom HTTP server with WebSocket proxy support)
+COPY /templates/server.js ./
+
 COPY /templates/docker/event-handler/ecosystem.config.cjs /opt/ecosystem.config.cjs
 
 EXPOSE 80
