@@ -23,10 +23,18 @@ services:
 
   event-handler:
     container_name: thepopebot-event-handler
-    image: ${EVENT_HANDLER_IMAGE_URL:-stephengpope/thepopebot:event-handler-${THEPOPEBOT_VERSION:-latest}}
+    build:
+      context: .
+      dockerfile: docker/event-handler/Dockerfile
+    image: ${EVENT_HANDLER_IMAGE_URL:-thepopebot-event-handler:local}
     volumes:
-      - .:/app
-      - /app/node_modules
+      # Only mount runtime directories (not source code - it's built into the image)
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - ./config:/app/config
+      - ./cron:/app/cron
+      - ./triggers:/app/triggers
+      - ./.env:/app/.env:ro
       - /var/run/docker.sock:/var/run/docker.sock
     labels:
       - traefik.enable=true
