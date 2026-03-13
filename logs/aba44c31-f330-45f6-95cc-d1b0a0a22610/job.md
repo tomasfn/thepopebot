@@ -1,0 +1,1 @@
+Create a file at `output/test.txt` with the content "Hello, world!". This is a test job to confirm the system is working correctly.
