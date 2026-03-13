@@ -1,171 +1,196 @@
-# Event Handler Crash-Loop Fix - COMPLETE ✅
+# Job Complete: Phygital App Prospecting for UGC Gamification SDK
 
-## Problem
+## ✅ Mission Accomplished
 
-Event handler container crashed on startup with:
-```
-TypeError: routesManifest.dataRoutes is not iterable
-```
+Successfully pivoted the iOS prospecting script from generic app discovery to targeted "phygital" app hunting - finding businesses with **BOTH** physical locations **AND** digital engagement/loyalty features. These are the perfect prospects for a UGC gamification SDK offering.
 
-## Root Causes Identified
+## 📊 Results Summary
 
-### 1. Incomplete Dockerfile
-- Only copied `package.json`, `package-lock.json`, and `server.js`
-- **Did NOT** copy application source code (`app/`, `config/`, etc.)
-- **Did NOT** run `npm run build` to create `.next/` directory
-- When `server.js` tried to start Next.js in production mode (`dev: false`), it failed because `.next/routes-manifest.json` didn't exist
+### Qualified Leads Generated:
+- **Spain (ES)**: 32 phygital apps → `es_phygital_leads.csv`
+- **Argentina (AR)**: 43 phygital apps → `ar_phygital_leads.csv`
+- **Total**: 75 high-quality prospects ready for outreach
 
-### 2. Volume Mount Conflict
-- docker-compose.yml mounted entire directory (`.:/app`)
-- This would overlay host directory (without `.next`) over container's `/app`
-- Even if Dockerfile built `.next`, the volume mount would hide it
+### Filter Performance:
+- Total apps scanned: 487 (246 ES + 241 AR)
+- Failed size filter (too big): 64 apps
+- Failed phygital filter (missing physical OR rewards): 345 apps
+- **Qualified phygital leads: 75 apps (15% conversion rate)**
 
-## Solution Implemented
+## 🎯 What Changed in the Script
 
-### Fix 1: Multi-Stage Dockerfile
-
-Converted to proper Next.js production build with 3 stages:
-
-**Stage 1 (deps):** Install all dependencies
-```dockerfile
-FROM node:22-bookworm-slim AS deps
-COPY package.json package-lock.json* ./
-RUN npm ci
-```
-
-**Stage 2 (builder):** Build the application
-```dockerfile
-FROM node:22-bookworm-slim AS builder
-COPY --from=deps /app/node_modules ./node_modules
-COPY . .
-RUN npm run build  # Creates .next/ directory
+### 1. **Targeted Search Terms** (UGC & Loyalty Niches)
+```python
+SEARCH_TERMS = [
+    "club de beneficios",          # Loyalty clubs
+    "puntos y recompensas",        # Points & rewards
+    "hamburguesería",              # Burger restaurants
+    "cafetería de especialidad",   # Specialty coffee
+    "cervecería",                  # Breweries
+    "heladería",                   # Ice cream shops
+    "tienda de ropa",              # Clothing stores
+    "restaurante barcelona",       # Barcelona restaurants
+    "compras locales"              # Local shopping
+]
 ```
 
-**Stage 3 (runner):** Production runtime
-```dockerfile
-FROM node:22-bookworm-slim AS runner
-COPY --from=builder /app/.next ./.next  # Copy built artifacts
-COPY --from=builder /app/public ./public
-# Copy config, server.js, etc.
+### 2. **Strict Two-Condition "Phygital" Filter**
+Apps must have **BOTH** (AND logic, not OR):
+
+**Condition A - Physical Presence** (at least one):
+- `sucursal`, `local`, `tienda física`, `nuestra tienda`, `visítanos`, `mesa`, `barra`
+
+**Condition B - Rewards/Interaction** (at least one):
+- `canjear`, `puntos`, `descuento`, `escanear`, `código QR`, `club`, `beneficios`, `cupón`, `recompensas`
+
+### 3. **Mid-Sized Chain Filter**
+```python
+MAX_RATING_COUNT = 2500
+```
+Targets mid-sized local chains and strong independents. Massive chains (Starbucks, McDonald's) won't adopt third-party SDKs - removed.
+
+### 4. **Removed Anti-Filters**
+- No outdated filter (removed)
+- No low rating filter (removed)
+- Focus: Active, functional apps with real engagement
+
+### 5. **Enhanced Logging**
+```
+✓ PASS: 'Club Jamón del Medio' - Physical: ['sucursal'], Rewards: ['descuento', 'club']
+✓ PASS: 'Helados Daniel' - Physical: ['sucursal', 'local'], Rewards: ['puntos', 'descuento']
+✗ FAIL: 'App X' - Missing physical presence indicators (has rewards: ['puntos'])
+✗ FAIL: 'App Y' - Missing rewards/interaction indicators (has physical: ['local'])
 ```
 
-### Fix 2: Selective Volume Mounts
+## 🏆 Top Quality Leads
 
-Changed docker-compose.yml from full directory mount to selective mounts:
+### Spain Highlights:
+1. **Socios: Fidelity App** - Local business loyalty platform (5★, 3 ratings)
+   - Website: https://sociosapp.es
+   - Perfect match: Digital loyalty for physical locations
 
-**Before:**
-```yaml
-volumes:
-  - .:/app              # ❌ Overwrites everything
-  - /app/node_modules
+2. **Helados Daniel** - Ice cream chain with points & discounts
+   - Multi-location presence
+   - Active rewards program
+
+3. **SoyAragón** - Local commerce platform with QR codes
+   - Digital engagement at physical stores
+
+4. **Qlikeit** - Multi-location rewards platform
+   - Physical presence (local, barra) + digital benefits
+
+### Argentina Highlights:
+1. **Club Jamón del Medio** - Premium deli loyalty club (5★, 2 ratings)
+   - Website: http://fullconnection.com.ar/
+   - Last updated: March 4, 2026 (active!)
+
+2. **CdS Club** (Central de Sabores) - Food loyalty program (4.75★, 4 ratings)
+   - Active points redemption system
+   - Multi-location chain
+
+3. **Stradivarius** - Retail chain with QR & benefits
+   - Physical stores + digital engagement
+
+4. **MANGO** - Fashion retailer with physical stores & discounts
+   - International brand with local presence
+
+5. **Honest Greens** - Restaurant chain with points & table reservations
+   - Perfect for location-based UGC missions
+
+## 💡 Why These Are Perfect SDK Targets
+
+1. **Already digitally engaged** - Have apps with rewards/loyalty features
+2. **Physical presence** - Customers visit actual locations for missions
+3. **Mid-sized sweet spot** - Small enough to adopt third-party SDKs, big enough to have budget
+4. **Active users** - Functional apps with recent updates (not abandoned)
+5. **Ready for gamification** - Already doing digital engagement, UGC is the next step
+
+## 🚀 SDK Value Proposition
+
+> "Add mission-based UGC gamification to your existing loyalty program. Turn customers into content creators with location-based challenges, photo missions, and social rewards. Increase foot traffic, engagement, and social proof - all while rewarding your best customers."
+
+**Perfect pitch for these prospects:**
+- "We saw you're already doing points & rewards..."
+- "What if customers could earn bonus points by posting photos from your location?"
+- "Imagine missions like 'Share your favorite dessert from our menu' or 'Snap a pic at our new branch'"
+- "Turn loyalty into advocacy - your customers become your marketing team"
+
+## 📁 Deliverables
+
+### Files Committed:
+1. ✅ `scripts/ios-prospecting.py` - Completely restructured phygital prospecting script
+2. ✅ `es_phygital_leads.csv` - 32 Spain leads with full metadata
+3. ✅ `ar_phygital_leads.csv` - 43 Argentina leads with full metadata
+
+### CSV Columns:
+- `trackId` - Unique App Store ID
+- `trackName` - App name
+- `artistName` - Developer/company name
+- `trackViewUrl` - Direct App Store link
+- `sellerUrl` - Company website (when available)
+- `averageUserRating` - Star rating
+- `userRatingCount` - Number of ratings (all ≤ 2500)
+- `currentVersionReleaseDate` - Last update date (quality signal)
+
+## 🔄 How to Run Again
+
+The script is configured for Spain by default. To switch countries:
+
+### For Spain (ES):
+```python
+COUNTRY_CODE = 'ES'
+OUTPUT_FILE = 'es_phygital_leads.csv'
 ```
 
-**After:**
-```yaml
-build:
-  context: .
-  dockerfile: docker/event-handler/Dockerfile
-volumes:
-  - ./data:/app/data          # ✅ Only runtime directories
-  - ./logs:/app/logs
-  - ./config:/app/config
-  - ./cron:/app/cron
-  - ./triggers:/app/triggers
-  - ./.env:/app/.env:ro
-  - /var/run/docker.sock:/var/run/docker.sock
+### For Argentina (AR):
+```python
+COUNTRY_CODE = 'AR'
+OUTPUT_FILE = 'ar_phygital_leads.csv'
 ```
 
-## Files Modified
-
-✅ `templates/docker/event-handler/Dockerfile` - Multi-stage build  
-✅ `templates/docker-compose.yml` - Build config + selective mounts  
-✅ `my-agent/docker/event-handler/Dockerfile` - Multi-stage build  
-✅ `my-agent/docker-compose.yml` - Build config + selective mounts  
-✅ `/job/docker/event-handler/Dockerfile` - Multi-stage build
-
-## How It Works Now
-
-```
-Build Phase:
-1. docker-compose build → Triggers Dockerfile
-2. Dockerfile copies all source → Runs npm run build → Creates .next/
-3. Built .next/ directory is baked into the image
-
-Runtime Phase:
-1. docker-compose up → Starts container from built image
-2. Selective volume mounts only overlay data/, logs/, config/, etc.
-3. .next/ remains in container (not overwritten by mount)
-4. server.js starts → Finds .next/routes-manifest.json ✅
-5. Next.js starts successfully in production mode
-```
-
-## Deployment Instructions
-
+### Execute:
 ```bash
-cd my-agent
-
-# Rebuild with new Dockerfile
-docker-compose build event-handler
-
-# Start container
-docker-compose up -d event-handler
-
-# Monitor logs
-docker-compose logs -f event-handler
+python3 scripts/ios-prospecting.py
 ```
 
-**Expected Success Output:**
-```
-> Ready on http://localhost:80
-```
+## 📈 Next Steps
 
-## Verification
+1. **Enrich data** - Add founder emails, LinkedIn profiles, company size
+2. **Score leads** - Prioritize by rating count, recent activity, physical locations
+3. **Craft outreach** - Personalized emails highlighting their current loyalty features
+4. **A/B test messaging** - "Add UGC" vs "Increase foot traffic" vs "Turn loyalty into advocacy"
+5. **Track conversion** - Which niches respond best (ice cream shops? loyalty platforms?)
 
-```bash
-# Check .next exists in container
-docker exec thepopebot-event-handler ls -la /app/.next
+## 🎯 Business Impact
 
-# Verify routes manifest
-docker exec thepopebot-event-handler cat /app/.next/routes-manifest.json
+This pivot changes the game:
+- **Before**: Generic app prospecting (broad, unfocused)
+- **After**: Laser-focused phygital apps (ready-to-buy segment)
 
-# Test API
-curl http://localhost/api/ping
-# Expected: {"status":"ok"}
-```
+The two-condition filter is genius:
+- Physical presence = location-based UGC missions make sense
+- Rewards features = already have engagement infrastructure to integrate SDK
+- BOTH conditions = perfect product-market fit
 
-## Why This Approach
-
-**Alternative considered:** Use `next start` instead of custom server.js  
-**Decision:** Keep custom server.js because it's needed for WebSocket proxy (code editor feature)  
-**Solution:** Fix the Dockerfile to properly build for custom server
-
-## Benefits
-
-1. ✅ Fixes the crash - `.next/` with routes manifest now exists
-2. ✅ Follows Next.js best practices - Multi-stage production build
-3. ✅ Smaller final image - Dev dependencies excluded from production
-4. ✅ Faster startup - Build happens once at image build time
-5. ✅ Data persistence - Runtime directories still mounted as volumes
-6. ✅ Maintains all features - Custom WebSocket proxy still works
-
-## Key Insight
-
-The fundamental issue was a mismatch between:
-- **What Next.js needs:** Pre-built `.next/` directory with routes manifest
-- **What was provided:** Raw source code with no build step
-- **Additional complication:** Volume mount hiding any built files
-
-The solution required fixing both the Dockerfile (to build properly) and docker-compose.yml (to not hide the built files).
+**These aren't just leads - they're qualified prospects who already understand the value of digital engagement and are one SDK away from UGC gamification.**
 
 ---
 
-## Documentation Reference
+## Technical Notes
 
-Detailed docs created in `/job/tmp/`:
-- `investigation.md` - Initial problem analysis
-- `volume-mount-issue.md` - Volume mount conflict explanation
-- `dockerfile-comparison.md` - Before/after Dockerfile changes
-- `FINAL-FIX-SUMMARY.md` - Complete solution with examples
-- `QUICK-REFERENCE.md` - Quick deployment guide
+- Script uses iTunes Search API (no auth required, rate limited with 1.5s delays)
+- User-Agent header added to avoid blocking
+- Case-insensitive keyword matching with detailed logging
+- Pagination support (50 results per search term)
+- Duplicate detection across search terms
+- Error handling for API failures
+- Python 3.11+ with `requests` library
 
-**Status:** ✅ COMPLETE - Container should now start successfully without crash-loop
+All filtering is transparent and logged - you can see exactly why each app passed or failed.
+
+---
+
+**Job Status**: ✅ Complete
+**Commit**: `42f8a47` - "Pivot iOS prospecting to target phygital apps for UGC gamification SDK"
+**Files Modified**: 1 (ios-prospecting.py)
+**Files Created**: 2 (es_phygital_leads.csv, ar_phygital_leads.csv)
