@@ -55,10 +55,28 @@ jobs:
           ALLOWED_PATHS="${{ vars.ALLOWED_PATHS }}"
           PR_NUMBER="${{ github.event.pull_request.number }}"
 
-          # Default: only logs allowed
+          # Default: everything except logs (for privacy - logs may contain sensitive conversations)
           if [ -z "$ALLOWED_PATHS" ]; then
-            ALLOWED_PATHS="/logs"
+            ALLOWED_PATHS="/"
           fi
+
+          # Get changed files first
+          CHANGED_FILES=$(gh pr diff "$PR_NUMBER" --name-only --repo "${{ github.repository }}")
+          if [ -z "$CHANGED_FILES" ]; then
+            echo "No changed files"
+            echo "allowed=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # Block logs directory - logs may contain sensitive conversation data
+          while IFS= read -r file; do
+            [ -z "$file" ] && continue
+            if [[ "$file" == logs/* ]] || [[ "$file" == "logs" ]]; then
+              echo "BLOCKED (privacy): $file - logs require manual review"
+              echo "allowed=false" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          done <<< "$CHANGED_FILES"
 
           # Normalize: ensure each prefix starts with /
           IFS=',' read -ra RAW_PREFIXES <<< "$ALLOWED_PATHS"
@@ -71,7 +89,7 @@ jobs:
             PREFIXES+=("$trimmed")
           done
 
-          # "/" means everything allowed
+          # "/" means everything allowed (except logs, checked above)
           for p in "${PREFIXES[@]}"; do
             if [ "$p" = "/" ]; then
               echo "All paths allowed (ALLOWED_PATHS contains /)"
@@ -79,14 +97,6 @@ jobs:
               exit 0
             fi
           done
-
-          # Get changed files
-          CHANGED_FILES=$(gh pr diff "$PR_NUMBER" --name-only --repo "${{ github.repository }}")
-          if [ -z "$CHANGED_FILES" ]; then
-            echo "No changed files"
-            echo "allowed=true" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
 
           # Check each file against prefixes
           # Strip leading / from prefixes for comparison (git paths are relative)
